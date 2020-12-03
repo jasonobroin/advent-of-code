@@ -22,7 +22,7 @@ import (
 
 var linelength = 0
 var maxrows = 0
-var matrix = make([][]bool, 0)
+var matrix = make([]string, 0)
 
 func navigate_slope(x_move int, y_move int) int {
 	// Navigate array
@@ -35,7 +35,7 @@ func navigate_slope(x_move int, y_move int) int {
 	trees := 0
 
 	for y < maxrows {
-		if matrix[y][x] == true {
+		if matrix[y][x] == '#' {
 			trees += 1
 		}
 		x += x_move
@@ -46,14 +46,13 @@ func navigate_slope(x_move int, y_move int) int {
 		}
 	}
 
-	fmt.Println("x move ", x_move, "y move", y_move, "Hit ", trees, "trees")
+	fmt.Println("x move", x_move, "y move", y_move, "Hit ", trees, "trees")
 
 	return trees
 }
 
 func main() {
 
-	// Parse the input stream to create a map of bools
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -63,18 +62,7 @@ func main() {
 			fmt.Println("line length", linelength)
 		}
 
-		row := make([]bool, linelength)
-
-		for i, c := range line {
-			if c == '#' {
-				row[i] = true // a tree
-			} else {
-				row[i] = false
-			}
-		}
-
-		matrix = append(matrix, row)
-
+		matrix = append(matrix, line)
 	}
 
 	maxrows = len(matrix)

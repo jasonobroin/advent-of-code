@@ -183,6 +183,7 @@ func main() {
 				if check_valid(kv) {
 					valid += 1
 				}
+			}
 			sets += 1
 			init_map(kv)
 		}

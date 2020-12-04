@@ -86,12 +86,7 @@ func check_valid_height(s string) bool {
 }
 
 func check_valid_hcl(s string) bool {
-	found, _ := regexp.MatchString("#[0-9a-f]{6}", s)
-
-	// Make sure there's nothing after our search
-	if len(s) != 7 {
-		return false
-	}
+	found, _ := regexp.MatchString("^#[0-9a-f]{6}$", s)
 
 	return found
 }
@@ -105,12 +100,7 @@ func check_valid_ecl(s string) bool {
 }
 
 func check_valid_pid(s string) bool {
-	found, _ := regexp.MatchString("[0-9]{9}", s)
-
-	// Make sure there's nothing after our search
-	if len(s) != 9 {
-		return false
-	}
+	found, _ := regexp.MatchString("^[0-9]{9}$", s)
 
 	return found
 }

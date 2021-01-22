@@ -1,16 +1,19 @@
 // https://adventofcode.com/2020/day23
 //
 // Read the file from stdin
+//
 
 package main
 
 import (
 	"bufio"
+	"container/ring"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
-	"strings"
+	"time"
 )
 
 var pt2 bool
@@ -33,86 +36,101 @@ func init() {
 	)
 
 	flag.IntVar(&count, "c", defaultV, usage)
-
 }
 
-func remove(line string, current_cup int, num int) (string, string) {
-	removed := ""
-	new_str := ""
-
-	offset := (current_cup + 1) % len(line)
-	atend := len(line) - offset
-
-	if atend < num {
-		removed = line[offset:]
-		removed += line[:num-atend]
-		new_str = line[num-atend : offset]
-	} else {
-		removed = line[offset : offset+num]
-		new_str = line[:offset]
-		new_str += line[offset+num:]
-
-	}
-
-	return new_str, removed
+func track(msg string) (string, time.Time) {
+	return msg, time.Now()
 }
 
-func new_label(line string, label int) int {
-	min := 9
-	max := 0
-	for _, v := range line {
-		vv, _ := strconv.Atoi(string(v))
-		if vv > max {
-			max = vv
-		}
-		if vv < min {
-			min = vv
+func duration(msg string, start time.Time) {
+	log.Printf("%v: %v\n", msg, time.Since(start))
+}
+
+func new_label(r *ring.Ring, s *ring.Ring, label int, max int) int {
+	min := 0
+
+	for true {
+		found := false
+		s.Do(func(p interface{}) {
+			if p.(int) == min {
+				min++
+				found = true
+			}
+		})
+		if !found {
+			break
 		}
 	}
+
+	for true {
+		found := false
+		s.Do(func(p interface{}) {
+			if p.(int) == max {
+				max--
+				found = true
+			}
+		})
+		if !found {
+			break
+		}
+	}
+
 	for true {
 		label--
-		if label < min {
-			return max
-		}
-		test := strconv.Itoa(label)
-		if strings.Contains(line, test) {
-			return label
+		found := false
+		s.Do(func(p interface{}) {
+			if p.(int) == label {
+				found = true
+			}
+		})
+		if !found {
+			break
 		}
 	}
-	return 0
+
+	if label <= min {
+		return max
+	}
+	return label
 }
 
-func add(line string, dest_cup int, new_cups string) string {
-	if dest_cup > len(line) {
-		dest_cup = len(line)
-	}
-	new_str := line[:dest_cup] + new_cups
-	if len(line) > dest_cup {
-		new_str += line[dest_cup:]
-	}
-	return new_str
-}
-
-func find_loc(line string, label int) int {
-	for k, v := range line {
-		vv, _ := strconv.Atoi(string(v))
-		if label == vv {
-			return k
+func two_cups(r *ring.Ring) {
+	for true {
+		if 1 == r.Value.(int) {
+			r = r.Next()
+			// fmt.Println(r.Value.(int))
+			res := int64(r.Value.(int))
+			r = r.Next()
+			// fmt.Println(r.Value.(int))
+			res *= int64(r.Value.(int))
+			fmt.Println("Product = ", res)
+			break
+		} else {
+			r = r.Next()
 		}
 	}
-	return 0
 }
 
-func final_line(line string) string {
-	for k, v := range line {
-		vv, _ := strconv.Atoi(string(v))
-		if 1 == vv {
-			new_str := line[k+1:]
-			new_str += line[:k]
-			return new_str
+func printRing(r *ring.Ring) {
+	r.Do(func(p interface{}) {
+		fmt.Print(p.(int), " ")
+	})
+	fmt.Print("\n")
+}
+
+func printFinal(r *ring.Ring) {
+	for true {
+		if r.Value.(int) == 1 {
+			s := ""
+			r.Do(func(p interface{}) {
+				s += strconv.Itoa(p.(int))
+			})
+			fmt.Println("final =", s[1:])
+			break
+		} else {
+			r = r.Next()
 		}
 	}
-	return ""
 }
 
 func main() {
@@ -125,23 +143,47 @@ func main() {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		current_cup := 0
-		for i := 0; i < count; i++ {
-			fmt.Println("round", i+1, current_cup, "\"", string(line[current_cup]), "\"", line)
-			label, _ := strconv.Atoi(string(line[current_cup]))
-			current_label := label
-			pickup := ""
-			line, pickup = remove(line, current_cup, 3)
-			// fmt.Println("pickup", pickup, line, label)
-			label = new_label(line, label)
-			loc := find_loc(line, label)
-			// fmt.Println("dest cup", label, "loc", loc)
-			line = add(line, loc+1, pickup)
-			current_cup = find_loc(line, current_label)
-			current_cup += 1
-			current_cup %= len(line)
+		allocate := len(line)
+		if pt2 {
+			allocate = 1000000
 		}
-		fmt.Println("final line", line, final_line(line))
 
+		// Build a map of values -> ring entries; this should allow us to
+		// very quickly find an entry we care about (at a cost in memory)
+		var lookup = map[int]*ring.Ring{}
+
+		r := ring.New(allocate)
+		for _, v := range line {
+			val, _ := strconv.Atoi(string(v))
+			r.Value = val
+			lookup[val] = r
+			r = r.Next()
+		}
+
+		if pt2 {
+			for i := len(line) + 1; i <= allocate; i++ {
+				r.Value = i
+				lookup[i] = r
+				r = r.Next()
+			}
+		}
+
+		for i := 0; i < count; i++ {
+			label := r.Value
+			pickup := r.Unlink(3)
+
+			label = new_label(r, pickup, label.(int), allocate)
+
+			l := lookup[label.(int)]
+			_ = l.Link(pickup)
+
+			r = r.Next()
+
+		}
+		if pt2 {
+			two_cups(r)
+		} else {
+			printFinal(r)
+		}
 	}
 }

@@ -14,9 +14,7 @@ def check_line(line, offset, close_char, depth):
     global score
     while offset < len(line):
         test = line[offset]
-#        print('cl', offset, test, close_char)
         if test == close_char:
-#            print(test, offset)
             if depth != 0:
                 return offset
             else:
@@ -24,14 +22,12 @@ def check_line(line, offset, close_char, depth):
                 depth -= 1
         elif valid_open(test):
             offset = check_line(line, offset + 1, map_to_close[test], depth + 1)
-            # This is the path we're going through that's not accounting correctly
             if offset == 0:
                 return 0
         elif test != close_char:
             # corrupt case
             return 0
         offset += 1
-#    print(close_char)
     if depth != -1:
         score = score * 5 + map_to_points[close_char]
     return len(line)
